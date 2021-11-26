@@ -12,3 +12,4 @@ Search the gallerys by tag and download pictures to the local
 - [ ] 函数化解析模块，合并各个下载器
 - [ ] 实现登录功能
 - [ ] 对低分辨率图像实行自动超分辨率（另写工具）
+- [ ] 进度百分比和图形化进度条
