@@ -7,42 +7,7 @@ import urllib.request
 import sys
 import ssl
 
-version='1.0'
-
-# 自定义区---------------------------------------------------------
-# 检索保存文件夹路径：
-ROOT_PATH = os.path.abspath(os.path.dirname(__file__))
-PATH = ROOT_PATH+'/Pic/'
-if not os.path.exists(PATH):
-    os.mkdir(PATH)
-# 每次访问的休息时间（秒）：
-WAIT = 3
-#-----------------------------------------------------------------
-
-# 网络相关设置------------------------------------------------------
-headers = {
-    'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.71 Safari/537.36"
-}
-ssl._create_default_https_context = ssl._create_unverified_context # 关闭证书验证
-requests.DEFAULT_RETRIES = 5  # 增加重试连接次数
-#-----------------------------------------------------------------
-
-# 初始化变量-------------------------------------------------------
-modlist = [1,2,3]
-modlisttext = ['danbooru'] + ['yande'] + ['lolibooru']
-number = 0 # 通用计数器
-page = 1 # 页数计数器
-tag = []
-pagelist = []
-down = '1'
-up = '1'
-pic_id = '314198'
-#-----------------------------------------------------------------
-
-
-# 函数区··························································
-
-# 图片保存---------------------------------------------------------
+# 图片保存
 def save_img(img_url,file_name):
     try:
         file_suffix = os.path.splitext(img_url)[1]  # 获得图片后缀
@@ -52,42 +17,47 @@ def save_img(img_url,file_name):
         print ('文件操作失败',e)
     except Exception as e:
         print ('错误 ：',e)
-#-----------------------------------------------------------------
 
-# 向用户请求tag----------------------------------------------------
+
+# 向用户请求tag
 def tag_get(tag):
     fun = str(site + '_tag') # 合成函数名
     tag = globals()[fun](tag) # 请求tag
-    if input('\n\033[4m是否开启安全检索？（输入y/n）\033[0m：') == 'y':
+    safe = input('\n\033[4m是否开启安全检索？（输入y/n）\033[0m：') # 询问用户是否过滤R18内容
+    if safe == 'y':
         tag = tag + ['rating%3As']
-    print('确认tag为：'+str(tag))
-    tag = tag + [''] + [''] + [''] + [''] + [''] + [''] + ['']
-    return(tag)
-#-----------------------------------------------------------------
+        print('确认tag为：'+str(tag))
+        tag = tag + [''] + [''] + [''] + [''] + [''] + [''] + [''] # 防止列表元素数不足而补充元素
+        return(tag)
+    elif safe == 'n':
+        print('确认tag为：'+str(tag))
+        tag = tag + [''] + [''] + [''] + [''] + [''] + [''] + [''] # 防止列表元素数不足而补充元素
+        return(tag)
+    else:
+        input_error() # 报错
 
-# 合成URL----------------------------------------------------------
+# 合成URL
 def url_make(page,mode):
-    if site_number == 1:
-        if mode == 1:
+    if site_number == 1: # 站点1（danbooru）
+        if mode == 1: # 方法1:合成索引页URL
             url = 'https://danbooru.donmai.us/posts?page='+str(page)+'&tags='+str(tag[0])+'+'+str(tag[1])+'+'+str(tag[2])+'+'
-        elif mode == 2:
+        elif mode == 2:  # 方法2:合成图片页URL
             url='https://danbooru.donmai.us/posts/'+pic_id
 
-    elif site_number == 2:
-        if mode == 1:
+    elif site_number == 2: # 站点2（yande）
+        if mode == 1:  # 方法1:合成索引页URL
             url = 'https://yande.re/post?&tags='+str(tag[0])+'+'+str(tag[1])+'+'+str(tag[2])+'+'+str(tag[3])+'+'+str(tag[4])+'+'+str(tag[5])+'&page='+str(page)
-        elif mode == 2:
+        elif mode == 2: # 方法2:合成图片页URL
             url='https://yande.re/post/show/'+pic_id
 
-    elif site_number == 3:
-        if mode == 1:
+    elif site_number == 3: # 站点3 （lolibooru）
+        if mode == 1:  # 方法1:合成索引页URL
             url = 'https://lolibooru.moe/post?&tags='+str(tag[0])+'+'+str(tag[1])+'+'+str(tag[2])+'+'+str(tag[3])+'+'+str(tag[4])+'+'+str(tag[5])+'&page='+str(page)
-        elif mode == 2:
+        elif mode == 2: # 方法2:合成图片页URL
             url='https://lolibooru.moe/post/show/'+pic_id
     return(url)
-#-----------------------------------------------------------------
 
-# 确认页面范围------------------------------------------------------
+# 确认页面范围
 def page_check():
     global up
     global down
@@ -110,23 +80,23 @@ def page_check():
             sys.exit()
         else:
             print('搜索到1页共'+str(len(imglist)) + '张图片')
-            down = '1'
-            up = '2'
+            down = '1' # 设置起始页为1，结束页为1
+            up = '1'
     else: # 存在多页时询问用户
-        pagelist = map(int,pagelist)
-        maxpage = str(max(pagelist))
-        print('共搜索到' + maxpage + '页')
-
-        # 索取下载范围------------------------------------------------------
-        down = input("\n请输入起始页：")
+        imglist = globals()[fun](response,1) # 获得当前页的图片ID列表
+        pagelist = map(int,pagelist) # 将列表中的字符型元素转化为整数型元素
+        maxpage = str(max(pagelist)) # 获得最大页码
+        print('共搜索到' + maxpage + '页，每页有'+str(len(imglist))+'张图片')
+        down = input("\n请输入起始页：") # 向用户索取下载范围
         up = input("请输入结束页：")
-        if len(up) == 0:
-            sys.exit()
-        up = str(int(up) + 1)
-        #-----------------------------------------------------------------
-#-----------------------------------------------------------------
+        if len(up) == 0: # 当没有输入时，报错
+            input_error()
+        elif int(up) < int(down): # 起始页大于结束页时，报错
+            input_error()
+    
+    up = str(int(up) + 1) # 为了后续处理方便，结束页+1
 
-# 图片下载---------------------------------------------------------
+# 图片下载
 def pic_download():
     fun = str(site + '_check')
     img = str(globals()[fun](response,2))
@@ -137,9 +107,8 @@ def pic_download():
         print('\t发现文件链接：' + img) # 显示处理后的下载链接
         print('\t下载中')
         save_img(img,pic_id) # 保存图片
-#-----------------------------------------------------------------
 
-# 下载链接文字处理--------------------------------------------------
+# 下载链接文字处理
 def URL_process(img):
     img=img.replace('[','') # 去除[号
     img=img.replace(']','') # 去除]号
@@ -147,42 +116,43 @@ def URL_process(img):
     img=img.replace('\"','') # 去除\号
     img=img.replace(' ','%20') # 替换空格
     return(img)
-#-----------------------------------------------------------------
 
-# 请求tag(danbooru方法)--------------------------------------------
+# 输入错误
+def input_error():
+    print('\n\033[0m输入有误，请重新启动程序\n')
+    sys.exit ()
+
+# 请求tag(danbooru方法)
 def danbooru_tag(tag):
     print('\n请输入检索tag（最多2项），跳过请按回车')
-    for i in range(1,3):
+    for i in range(1,3): # 至多索取两次tag
         tagtemp = input('\033[4m请输入tag'+str(i)+'\033[0m:')
-        if tagtemp == '' :
+        if tagtemp == '' : # 跳过输入时提前退出
             break
         tag = tag + [tagtemp]
     return(tag)
-#-----------------------------------------------------------------
 
-# 请求tag(yande方法)-----------------------------------------------
+# 请求tag(yande方法)
 def yande_tag(tag):
     print('\n请输入检索tag（最多4项），跳过请按回车')
-    for i in range(1,5):
+    for i in range(1,5): # 至多索取四次tag
         tagtemp = input('\033[4m请输入tag'+str(i)+'\033[0m:')
-        if tagtemp == '' :
+        if tagtemp == '' : # 跳过输入时提前退出
             break
         tag = tag + [tagtemp]
     return(tag)
-#-----------------------------------------------------------------
 
-# 请求tag(lolibooru方法)-------------------------------------------
+# 请求tag(lolibooru方法)
 def lolibooru_tag(tag):
     print('\n请输入检索tag（最多4项），跳过请按回车')
-    for i in range(1,5):
+    for i in range(1,5): # 至多索取四次tag
         tagtemp = input('\033[4m请输入tag'+str(i)+'\033[0m:')
-        if tagtemp == '' :
+        if tagtemp == '' : # 跳过输入时提前退出
             break
         tag = tag + [tagtemp]
     return(tag)
-#-----------------------------------------------------------------
 
-# 页面解析(danbooru方法)--------------------------------------------
+# 页面解析(danbooru方法)
 def danbooru_check(response,mode):
     if mode == 0:
         pagelist=re.findall(r'hidden\" href\=\"\/posts\?page=(.+?)&',response.text) # 检索最大页数
@@ -195,9 +165,8 @@ def danbooru_check(response,mode):
     elif mode == 2:
         html=re.findall(r'href=\"(.+?)\?download',response.text) # 查找文件链接（danbooru方法）
         return(html)
-#-----------------------------------------------------------------
 
-# 页面解析(yande方法)-----------------------------------------------
+# 页面解析(yande方法)
 def yande_check(response,mode):
     if mode == 0:
         pagelist=re.findall(r'\"Page (.+?)\"',response.text) # 检索最大页数
@@ -212,9 +181,8 @@ def yande_check(response,mode):
         if len(html) == 0:
             html=re.findall(r'highres\" href=\"(.+?)\">Video',response.text) #查找文件链接方法3 
         return(html)
-#-----------------------------------------------------------------
 
-# 页面解析(lolibooru方法)-------------------------------------------
+# 页面解析(lolibooru方法)
 def lolibooru_check(response,mode):
     if mode == 0:
         pagelist=re.findall(r'&page=(.+?)\">',response.text) # 检索最大页数
@@ -229,42 +197,59 @@ def lolibooru_check(response,mode):
         if len(html) == 0:
             html=re.findall(r'highres\" href=\"(.+?)\">Video',response.text) #查找文件链接方法3 
         return(html)
-#-----------------------------------------------------------------    
 
-# 函数区结束·······················································
+# 以上为函数部分
+# ------------------------------------------------------------------------------------------
 
-# 基础信息显示------------------------------------------------------
+version='1.0' # 版本号
+
+ROOT_PATH = os.path.abspath(os.path.dirname(__file__)) # 当前文件所在路径
+PATH = ROOT_PATH+'/Pic/' # 文件保存路径（如需自定义请修改！）
+if not os.path.exists(PATH): # 目标不存在时，创建文件夹
+    os.mkdir(PATH)
+WAIT = 3 # 每次访问的休息时间（秒）（如需自定义请修改！）
+headers = {
+    'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.71 Safari/537.36"
+} # 请求头（如需自定义请修改！）
+ssl._create_default_https_context = ssl._create_unverified_context # 关闭证书验证
+requests.DEFAULT_RETRIES = 5  # 增加重试连接次数
+
+modlist = [1,2,3] # 目前支持的站点编号
+modlisttext = ['danbooru'] + ['yande'] + ['lolibooru'] # 目前支持的名称
+number = 0 # 通用计数器
+page = 1 # 页数计数器
+tag = [] # tag列表
+pagelist = [] # 最大页面数统计列表
+down = '1' # 下载页下标
+up = '1' # 下载页上标
+pic_id = '314198' # 图片ID
+
+
+# 基础信息显示
 print('\n\033[1;31mdanbooru下载器' + version + '\033[0m' + ' by Youngwang')
 #time.sleep(1)
 print('\n当前下载文件夹路径：' + PATH)
 print('当前访问休息时间：' + str(WAIT) + '秒')
-#-----------------------------------------------------------------
-
-# 向用户请求下载站点------------------------------------------------
 print('\n目前已支持的下载站点：')
 
 for p in modlist: # 逐个显示已支持的站点
     print('\033[1;31m站点' + str(p) + ':\033[0m ' + modlisttext[p-1])
 
-try:
+try: # 询问用户本次访问的站点
     site_number = int(input('\n\033[4m请输入需访问的站点数字\033[0m：\033[1;31m'))
 except:
-    print('\n输入有误，请重新启动程序\n')
-    sys.exit ()
+    input_error()
 if site_number not in modlist:
-    print('\n输入有误，请重新启动程序\n')
-    sys.exit ()
+    input_error()
 else:
     site = str(modlisttext[site_number-1])
     print('\033[0m本次下载所选的站点：' + site)
-#-----------------------------------------------------------------
 
-
-tag = tag_get(tag)
-page_check()
+tag = tag_get(tag) # 使用函数获取用户自定义tag
+page_check() # 检查并询问用户所需下载的页数
 input("\n\033[5;31m按回车以开始下载\033[0m")
 
-# 下载主程序--------------------------------------------------------
+# 下载主程序
 for page in range(int(down),int(up)): # 循环，下载某页图片
     print('\n\033[1;31m第'+str(page)+'页\033[0m')
     url = url_make(page,1)
