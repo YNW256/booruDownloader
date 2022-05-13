@@ -241,7 +241,7 @@ def gelbooru_check(response,mode):
 version='1.1' # 版本号
 
 ROOT_PATH = os.path.abspath(os.path.dirname(__file__)) # 当前文件所在路径
-PATH = ROOT_PATH+'/Pic/' # 文件保存路径（如需自定义请修改！）
+PATH = os.path.join(ROOT_PATH,'Pic','')  # 文件保存路径（如需自定义请修改！）
 if not os.path.exists(PATH): # 目标不存在时，创建文件夹
     os.mkdir(PATH)
 WAIT = 3 # 每次访问的休息时间（秒）（如需自定义请修改！）
